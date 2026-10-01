@@ -41,7 +41,7 @@ const INITIAL_MOCK_TASKS = [
   {
     id: 'task-2',
     title: '📊 주간 업무 생산성 리포트 확인하기',
-    notes: 'TaskPulse 대시보드 통계 차트 기능 테스트',
+    notes: 'To-do Plus 대시보드 통계 차트 기능 테스트',
     categoryId: 'cat-work',
     priority: 'medium',
     dueDate: getTodayFormatted(1),

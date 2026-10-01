@@ -1,8 +1,8 @@
-# TaskPulse - Modern To-Do & Productivity Analytics 🚀
+# To-do Plus - Modern To-Do & Productivity Analytics 🚀
 
 모던하고 직관적인 인터페이스의 할 일 관리 및 생산성 분석 웹 애플리케이션입니다.
 
-![TaskPulse](https://img.shields.io/badge/Status-Active-brightgreen)
+![To-do Plus](https://img.shields.io/badge/Status-Active-brightgreen)
 ![Tech](https://img.shields.io/badge/Tech-Vite%20%7C%20Vanilla%20JS%20%7C%20CSS-blue)
 
 ## ✨ 주요 기능 (Key Features)

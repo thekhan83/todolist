@@ -255,7 +255,7 @@ class TaskManager {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `TaskPulse_Backup_${this.getTodayDateString()}.json`;
+    a.download = `TodoPlus_Backup_${this.getTodayDateString()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   }

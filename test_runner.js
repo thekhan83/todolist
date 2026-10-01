@@ -13,7 +13,7 @@ global.localStorage = {
 // Import TaskManager
 const { taskManager } = await import('./src/modules/taskManager.js');
 
-console.log('🧪 Starting TaskPulse Automated Tests...\n');
+console.log('🧪 Starting To-do Plus Automated Tests...\n');
 
 let passedTests = 0;
 let totalTests = 0;
