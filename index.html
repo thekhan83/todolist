@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskPulse - Modern To-Do & Analytics</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Styles -->
+  <link rel="stylesheet" href="./src/styles/variables.css" />
+  <link rel="stylesheet" href="./src/styles/base.css" />
+  <link rel="stylesheet" href="./src/styles/components.css" />
+  <link rel="stylesheet" href="./src/styles/animations.css" />
+</head>
+<body>
+  <div id="app" class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <div class="logo-icon">
+            <i data-lucide="check-check"></i>
+          </div>
+          <span class="logo-text">Task<span class="highlight">Pulse</span></span>
+        </div>
+        <button id="mobileSidebarClose" class="btn-icon mobile-only" aria-label="사이드바 닫기">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <nav class="nav-menu">
+        <div class="nav-section-label">뷰 (Views)</div>
+        <button class="nav-item active" data-view="tasks">
+          <i data-lucide="layout-dashboard"></i>
+          <span>작업 관리</span>
+        </button>
+        <button class="nav-item" data-view="analytics">
+          <i data-lucide="bar-chart-3"></i>
+          <span>생산성 통계</span>
+        </button>
+
+        <div class="nav-section-label">필터 (Filters)</div>
+        <button class="nav-filter active" data-filter="all">
+          <i data-lucide="inbox"></i>
+          <span>전체 할 일</span>
+          <span class="badge" id="badge-all">0</span>
+        </button>
+        <button class="nav-filter" data-filter="today">
+          <i data-lucide="calendar"></i>
+          <span>오늘 할 일</span>
+          <span class="badge" id="badge-today">0</span>
+        </button>
+        <button class="nav-filter" data-filter="upcoming">
+          <i data-lucide="clock"></i>
+          <span>마감 임박 (3일 내)</span>
+          <span class="badge warning" id="badge-upcoming">0</span>
+        </button>
+        <button class="nav-filter" data-filter="starred">
+          <i data-lucide="star"></i>
+          <span>중요 (즐겨찾기)</span>
+          <span class="badge" id="badge-starred">0</span>
+        </button>
+
+        <div class="nav-section-label">
+          <span>카테고리 (Categories)</span>
+          <button id="btnAddCategory" class="btn-icon-xs" title="카테고리 추가">
+            <i data-lucide="plus"></i>
+          </button>
+        </div>
+        <div class="category-list" id="categoryList">
+          <!-- Categories rendered dynamically -->
+        </div>
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <div class="streak-widget">
+          <div class="streak-icon">🔥</div>
+          <div class="streak-info">
+            <div class="streak-count"><span id="streakDays">0</span>일 연속 달성!</div>
+            <div class="streak-sub">오늘 할 일을 마치고 기록을 이어가세요.</div>
+          </div>
+        </div>
+
+        <div class="theme-toggle-wrapper">
+          <span class="theme-label"><i data-lucide="sun-moon"></i> 화면 테마</span>
+          <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="테마 전환">
+            <div class="theme-toggle-circle"></div>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Sidebar Overlay for mobile -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Header Bar -->
+      <header class="top-header">
+        <div class="header-left">
+          <button id="mobileSidebarOpen" class="btn-icon mobile-only" aria-label="메뉴 열기">
+            <i data-lucide="menu"></i>
+          </button>
+          <div>
+            <h1 class="header-title" id="viewTitle">오늘도 힘차게 시작해볼까요? 🚀</h1>
+            <p class="header-subtitle" id="viewSubtitle">목표를 차근차근 달성하고 생산성을 높여보세요.</p>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <!-- Quick Search -->
+          <div class="search-box">
+            <i data-lucide="search" class="search-icon"></i>
+            <input type="text" id="searchInput" placeholder="할 일 검색... (Cmd/Ctrl + K)" />
+            <button id="clearSearchBtn" class="btn-clear-search hidden">&times;</button>
+          </div>
+
+          <!-- Add Task Primary Button -->
+          <button id="btnOpenNewTaskModal" class="btn btn-primary shadow-glow">
+            <i data-lucide="plus"></i>
+            <span>새 할 일 추가</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- View Container 1: Task Management -->
+      <section id="view-tasks" class="content-view active">
+        <!-- Progress Summary Card -->
+        <div class="progress-banner">
+          <div class="banner-content">
+            <div class="banner-info">
+              <h2 id="progressHeadline">오늘의 완료율: 0%</h2>
+              <p id="progressSubtitle">할 일을 달성하여 프로그레스 바를 채워보세요!</p>
+            </div>
+            <div class="banner-stat">
+              <div class="stat-number" id="progressStatText">0 / 0</div>
+              <div class="stat-label">완료됨</div>
+            </div>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="mainProgressBar" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Controls / Filter Toolbar -->
+        <div class="toolbar">
+          <div class="filter-pills" id="filterPills">
+            <button class="pill active" data-pill="all">전체</button>
+            <button class="pill" data-pill="active">진행 중</button>
+            <button class="pill" data-pill="high-priority">높은 우선순위</button>
+          </div>
+
+          <div class="sort-wrapper">
+            <label for="sortSelect"><i data-lucide="arrow-down-up"></i> 정렬:</label>
+            <select id="sortSelect" class="select-input">
+              <option value="createdAt-desc">최신순</option>
+              <option value="dueDate-asc">마감일임박순</option>
+              <option value="priority-desc">우선순위높은순</option>
+              <option value="title-asc">가나다순</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Active Tasks List -->
+        <div class="task-section">
+          <div class="section-header">
+            <h3 class="section-title">
+              <i data-lucide="list-todo"></i> 진행 중인 할 일
+              <span class="count-pill" id="activeTaskCount">0</span>
+            </h3>
+          </div>
+          <div id="activeTasksContainer" class="task-list">
+            <!-- Active Task cards injected here -->
+          </div>
+          <div id="emptyActiveState" class="empty-state hidden">
+            <div class="empty-icon"><i data-lucide="sparkles"></i></div>
+            <h4>진행 중인 할 일이 없습니다!</h4>
+            <p>새로운 목표를 추가하거나 남은 시간을 여유롭게 즐겨보세요.</p>
+            <button class="btn btn-secondary btn-sm" id="btnEmptyAddTask">+ 새 할 일 추가하기</button>
+          </div>
+        </div>
+
+        <!-- Completed Tasks Section (Collapsible Accordion) -->
+        <div class="task-section completed-section" id="completedSection">
+          <div class="completed-accordion-header" id="toggleCompletedBtn">
+            <div class="completed-title">
+              <i data-lucide="check-circle-2" class="completed-icon"></i>
+              <span>완료된 항목</span>
+              <span class="count-pill completed-pill" id="completedTaskCount">0</span>
+            </div>
+            <div class="accordion-right">
+              <button id="btnClearCompleted" class="btn-text-danger btn-xs" title="완료된 목록 전체 삭제">
+                <i data-lucide="trash-2"></i> 목록 비우기
+              </button>
+              <i data-lucide="chevron-down" class="chevron-icon" id="completedChevron"></i>
+            </div>
+          </div>
+
+          <div id="completedTasksContainer" class="task-list accordion-content">
+            <!-- Completed Task cards injected here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- View Container 2: Analytics Dashboard -->
+      <section id="view-analytics" class="content-view">
+        <div class="analytics-grid">
+          <!-- Overview Cards -->
+          <div class="analytics-card stat-card">
+            <div class="stat-card-header">
+              <span>누적 완료 할 일</span>
+              <i data-lucide="trophy" class="icon-gold"></i>
+            </div>
+            <div class="stat-card-value" id="statTotalCompleted">0</div>
+            <div class="stat-card-sub" id="statCompletedSub">전체 할 일 중 완료 비율 0%</div>
+          </div>
+
+          <div class="analytics-card stat-card">
+            <div class="stat-card-header">
+              <span>현재 스트릭 (연속 달성)</span>
+              <i data-lucide="flame" class="icon-orange"></i>
+            </div>
+            <div class="stat-card-value" id="statStreakDays">0 일</div>
+            <div class="stat-card-sub">매일 최소 1개 이상 완수 시 기록유지</div>
+          </div>
+
+          <div class="analytics-card stat-card">
+            <div class="stat-card-header">
+              <span>마감 준수율</span>
+              <i data-lucide="target" class="icon-green"></i>
+            </div>
+            <div class="stat-card-value" id="statOnTimeRate">100%</div>
+            <div class="stat-card-sub">기한 내 완료된 할 일 비율</div>
+          </div>
+
+          <!-- Charts -->
+          <div class="analytics-card chart-card wide">
+            <div class="chart-header">
+              <h3><i data-lucide="bar-chart-2"></i> 주간 할 일 완료 트렌드 (최근 7일)</h3>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="weeklyChart"></canvas>
+            </div>
+          </div>
+
+          <div class="analytics-card chart-card">
+            <div class="chart-header">
+              <h3><i data-lucide="pie-chart"></i> 카테고리별 할 일 분포</h3>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="categoryChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Data Backup & Reset Card -->
+          <div class="analytics-card data-card">
+            <div class="chart-header">
+              <h3><i data-lucide="hard-drive"></i> 데이터 보관 및 관리</h3>
+            </div>
+            <p class="data-desc">모든 할 일 데이터는 브라우저(LocalStorage)에 안전하게 저장됩니다. JSON 파일로 백업하거나 복구할 수 있습니다.</p>
+            <div class="data-actions">
+              <button id="btnExportData" class="btn btn-secondary">
+                <i data-lucide="download"></i> JSON 백업 다운로드
+              </button>
+              <label for="importFileInput" class="btn btn-secondary cursor-pointer">
+                <i data-lucide="upload"></i> JSON 백업 불러오기
+                <input type="file" id="importFileInput" accept=".json" class="hidden" />
+              </label>
+              <button id="btnResetData" class="btn btn-danger-outline">
+                <i data-lucide="rotate-ccw"></i> 샘플 데이터로 리셋
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Task Create/Edit Modal -->
+  <div id="taskModal" class="modal-backdrop">
+    <div class="modal-window shadow-pop">
+      <div class="modal-header">
+        <h3 id="modalTitle"><i data-lucide="plus-circle"></i> 새 할 일 작성</h3>
+        <button id="btnCloseModal" class="btn-icon">&times;</button>
+      </div>
+      <form id="taskForm" class="modal-body">
+        <input type="hidden" id="taskId" />
+
+        <div class="form-group">
+          <label for="taskTitle">할 일 제목 <span class="required">*</span></label>
+          <input type="text" id="taskTitle" placeholder="예: 3분기 프로젝트 기획서 제출" required maxlength="100" />
+        </div>
+
+        <div class="form-group">
+          <label for="taskNotes">상세 내용 및 메모</label>
+          <textarea id="taskNotes" rows="3" placeholder="필요한 레퍼런스 링크나 세부 수행 항목을 적어보세요."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="taskCategory">카테고리</label>
+            <select id="taskCategory" class="select-input">
+              <!-- Rendered dynamically -->
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="taskPriority">우선순위</label>
+            <select id="taskPriority" class="select-input">
+              <option value="low">Low (보통)</option>
+              <option value="medium" selected>Medium (중요)</option>
+              <option value="high">High (긴급/최우선)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="taskDueDate">마감 일자</label>
+            <input type="date" id="taskDueDate" />
+          </div>
+
+          <div class="form-group">
+            <label for="taskDueTime">마감 시간</label>
+            <input type="time" id="taskDueTime" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label><i data-lucide="check-square"></i> 세부 체크리스트 (Subtasks)</label>
+          <div id="subtasksInputContainer" class="subtasks-input-list">
+            <!-- Dynamic subtask items -->
+          </div>
+          <button type="button" id="btnAddSubtaskItem" class="btn btn-xs btn-secondary mt-2">
+            <i data-lucide="plus"></i> 세부 항목 추가
+          </button>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="btnCancelModal" class="btn btn-secondary">취소</button>
+          <button type="submit" id="btnSaveTask" class="btn btn-primary">저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

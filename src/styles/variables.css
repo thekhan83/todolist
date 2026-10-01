@@ -1,0 +1,84 @@
+/* Color Palette, HSL Tokens, Glassmorphism, and Typography */
+:root {
+  /* Font Families */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Outfit', sans-serif;
+
+  /* HSL Color Palette (Dark Theme Default) */
+  --bg-primary: hsl(224, 25%, 10%);
+  --bg-secondary: hsl(224, 20%, 14%);
+  --bg-tertiary: hsl(224, 18%, 18%);
+  
+  --card-bg: rgba(30, 36, 51, 0.7);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-hover-border: rgba(99, 102, 241, 0.4);
+  
+  --text-primary: hsl(210, 40%, 98%);
+  --text-secondary: hsl(215, 20%, 70%);
+  --text-muted: hsl(215, 15%, 50%);
+  
+  --brand-primary: hsl(245, 82%, 67%);
+  --brand-primary-hover: hsl(245, 82%, 73%);
+  --brand-glow: rgba(99, 102, 241, 0.35);
+
+  --accent-cyan: hsl(190, 90%, 50%);
+  --accent-orange: hsl(25, 95%, 55%);
+  --accent-green: hsl(150, 70%, 45%);
+  --accent-red: hsl(355, 85%, 60%);
+
+  /* Priority Colors */
+  --priority-high-bg: rgba(239, 68, 68, 0.15);
+  --priority-high-text: #f87171;
+  --priority-high-border: rgba(239, 68, 68, 0.3);
+
+  --priority-med-bg: rgba(245, 158, 11, 0.15);
+  --priority-med-text: #fbbf24;
+  --priority-med-border: rgba(245, 158, 11, 0.3);
+
+  --priority-low-bg: rgba(59, 130, 246, 0.15);
+  --priority-low-text: #60a5fa;
+  --priority-low-border: rgba(59, 130, 246, 0.3);
+
+  /* Elevation Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 20px var(--brand-glow);
+
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Glassmorphism */
+  --glass-backdrop: blur(16px) saturate(180%);
+}
+
+/* Light Theme Overrides */
+[data-theme="light"] {
+  --bg-primary: hsl(220, 20%, 97%);
+  --bg-secondary: hsl(0, 0%, 100%);
+  --bg-tertiary: hsl(220, 15%, 92%);
+
+  --card-bg: rgba(255, 255, 255, 0.85);
+  --card-border: rgba(0, 0, 0, 0.08);
+  --card-hover-border: rgba(99, 102, 241, 0.5);
+
+  --text-primary: hsl(224, 30%, 12%);
+  --text-secondary: hsl(224, 15%, 40%);
+  --text-muted: hsl(224, 10%, 60%);
+
+  --brand-primary: hsl(245, 75%, 58%);
+  --brand-primary-hover: hsl(245, 75%, 50%);
+  --brand-glow: rgba(99, 102, 241, 0.2);
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.12);
+}
