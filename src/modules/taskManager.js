@@ -1,4 +1,3 @@
-// Task State & Business Logic Handler
 import {
   loadTasksFromStorage,
   saveTasksToStorage,
@@ -7,6 +6,13 @@ import {
   loadStreakFromStorage,
   saveStreakToStorage
 } from './storage.js';
+import {
+  fetchTasksFromSupabase,
+  upsertTaskToSupabase,
+  deleteTaskFromSupabase,
+  syncLocalTasksToSupabase,
+  subscribeToTaskChanges
+} from './supabaseClient.js';
 
 class TaskManager {
   constructor() {
@@ -35,8 +41,53 @@ class TaskManager {
     return d.toISOString().split('T')[0];
   }
 
+  // Initialize Supabase Cloud Sync
+  async initCloudSync(onSyncChange) {
+    this.onSyncChange = onSyncChange;
+    try {
+      const remoteTasks = await fetchTasksFromSupabase();
+      if (remoteTasks !== null) {
+        if (remoteTasks.length > 0) {
+          this.tasks = remoteTasks;
+          this.persist();
+        } else if (this.tasks.length > 0) {
+          // Upload local tasks to Supabase if Supabase is newly created/empty
+          await syncLocalTasksToSupabase(this.tasks);
+        }
+        if (typeof this.onSyncChange === 'function') {
+          this.onSyncChange({ connected: true, taskCount: this.tasks.length });
+        }
+
+        // Realtime subscription
+        subscribeToTaskChanges(async () => {
+          const updated = await fetchTasksFromSupabase();
+          if (updated) {
+            this.tasks = updated;
+            this.persist();
+            if (typeof this.onSyncChange === 'function') {
+              this.onSyncChange({ connected: true, taskCount: this.tasks.length, remote: true });
+            }
+          }
+        });
+        return true;
+      } else {
+        if (typeof this.onSyncChange === 'function') {
+          this.onSyncChange({ connected: false });
+        }
+        return false;
+      }
+    } catch (e) {
+      console.warn('[TaskManager] Cloud sync error:', e);
+      if (typeof this.onSyncChange === 'function') {
+        this.onSyncChange({ connected: false });
+      }
+      return false;
+    }
+  }
+
   // Add or Update Task
   saveTask(taskData) {
+    let savedTask = null;
     if (taskData.id) {
       // Update
       const index = this.tasks.findIndex(t => t.id === taskData.id);
@@ -45,6 +96,7 @@ class TaskManager {
           ...this.tasks[index],
           ...taskData
         };
+        savedTask = this.tasks[index];
       }
     } else {
       // Create new
@@ -63,8 +115,15 @@ class TaskManager {
         subtasks: taskData.subtasks || []
       };
       this.tasks.unshift(newTask);
+      savedTask = newTask;
     }
     this.persist();
+
+    // Async sync to Supabase
+    if (savedTask) {
+      upsertTaskToSupabase(savedTask).catch(() => {});
+    }
+    return savedTask;
   }
 
   // Toggle Completion
@@ -80,6 +139,7 @@ class TaskManager {
     }
 
     this.persist();
+    upsertTaskToSupabase(task).catch(() => {});
     return task;
   }
 
@@ -89,18 +149,22 @@ class TaskManager {
     if (!task) return;
     task.starred = !task.starred;
     this.persist();
+    upsertTaskToSupabase(task).catch(() => {});
   }
 
   // Delete Task
   deleteTask(id) {
     this.tasks = this.tasks.filter(t => t.id !== id);
     this.persist();
+    deleteTaskFromSupabase(id).catch(() => {});
   }
 
   // Clear Completed Tasks
   clearCompletedTasks() {
+    const completedTasks = this.tasks.filter(t => t.completed);
     this.tasks = this.tasks.filter(t => !t.completed);
     this.persist();
+    completedTasks.forEach(t => deleteTaskFromSupabase(t.id).catch(() => {}));
   }
 
   // Subtask completion toggle
@@ -111,6 +175,7 @@ class TaskManager {
     if (sub) {
       sub.completed = !sub.completed;
       this.persist();
+      upsertTaskToSupabase(task).catch(() => {});
     }
   }
 

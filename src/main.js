@@ -6,6 +6,29 @@ import { loadThemeFromStorage, saveThemeToStorage } from './modules/storage.js';
 document.addEventListener('DOMContentLoaded', () => {
   const ui = new UIController(taskManager);
 
+  // Cloud Sync Status Badge Handler
+  const cloudSyncBadge = document.getElementById('cloudSyncStatus');
+  const cloudSyncText = document.getElementById('cloudSyncText');
+
+  const updateSyncUI = (status) => {
+    if (!cloudSyncBadge || !cloudSyncText) return;
+    if (status && status.connected) {
+      cloudSyncBadge.className = 'cloud-sync-badge synced';
+      cloudSyncText.textContent = '클라우드 연동됨';
+      cloudSyncBadge.title = 'Supabase PostgreSQL DB와 실시간 연동 중입니다.';
+    } else {
+      cloudSyncBadge.className = 'cloud-sync-badge local';
+      cloudSyncText.textContent = '로컬 모드';
+      cloudSyncBadge.title = 'Supabase tasks 테이블 생성 후 자동 연동됩니다.';
+    }
+  };
+
+  // Initialize Supabase Cloud Sync
+  taskManager.initCloudSync((status) => {
+    updateSyncUI(status);
+    ui.renderAll();
+  });
+
   // Theme Setup
   const currentTheme = loadThemeFromStorage();
   document.documentElement.setAttribute('data-theme', currentTheme);
