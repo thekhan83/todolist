@@ -86,6 +86,7 @@ const INITIAL_MOCK_TASKS = [
 ];
 
 export const loadTasksFromStorage = () => {
+  if (typeof localStorage === 'undefined') return INITIAL_MOCK_TASKS;
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.TASKS);
     if (!raw) {
@@ -94,12 +95,12 @@ export const loadTasksFromStorage = () => {
     }
     return JSON.parse(raw);
   } catch (e) {
-    console.error('Failed to load tasks from storage', e);
     return INITIAL_MOCK_TASKS;
   }
 };
 
 export const saveTasksToStorage = (tasks) => {
+  if (typeof localStorage === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
   } catch (e) {
@@ -108,6 +109,7 @@ export const saveTasksToStorage = (tasks) => {
 };
 
 export const loadCategoriesFromStorage = () => {
+  if (typeof localStorage === 'undefined') return DEFAULT_CATEGORIES;
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
     if (!raw) {
@@ -121,6 +123,7 @@ export const loadCategoriesFromStorage = () => {
 };
 
 export const saveCategoriesToStorage = (categories) => {
+  if (typeof localStorage === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
   } catch (e) {
@@ -129,14 +132,17 @@ export const saveCategoriesToStorage = (categories) => {
 };
 
 export const loadThemeFromStorage = () => {
+  if (typeof localStorage === 'undefined') return 'dark';
   return localStorage.getItem(STORAGE_KEYS.THEME) || 'dark';
 };
 
 export const saveThemeToStorage = (theme) => {
+  if (typeof localStorage === 'undefined') return;
   localStorage.setItem(STORAGE_KEYS.THEME, theme);
 };
 
 export const loadStreakFromStorage = () => {
+  if (typeof localStorage === 'undefined') return { days: 1, lastCompletedDate: getTodayFormatted(0) };
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.STREAK);
     return raw ? JSON.parse(raw) : { days: 1, lastCompletedDate: getTodayFormatted(0) };
@@ -146,5 +152,6 @@ export const loadStreakFromStorage = () => {
 };
 
 export const saveStreakToStorage = (streak) => {
+  if (typeof localStorage === 'undefined') return;
   localStorage.setItem(STORAGE_KEYS.STREAK, JSON.stringify(streak));
 };
