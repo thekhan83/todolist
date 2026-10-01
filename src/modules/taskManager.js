@@ -19,6 +19,7 @@ class TaskManager {
     this.tasks = loadTasksFromStorage();
     this.categories = loadCategoriesFromStorage();
     this.streak = loadStreakFromStorage();
+    this.currentUser = null;
 
     // Filters & Navigation State
     this.currentView = 'tasks'; // 'tasks' | 'analytics'
@@ -28,6 +29,15 @@ class TaskManager {
     this.sortOption = 'createdAt-desc';
     this.searchQuery = '';
     this.completedAccordionOpen = true;
+  }
+
+  // Set logged in user state
+  setUser(user) {
+    this.currentUser = user;
+    if (!user) {
+      this.tasks = [];
+      this.persist();
+    }
   }
 
   // Getters & Calculations
@@ -45,22 +55,26 @@ class TaskManager {
   async initCloudSync(onSyncChange) {
     this.onSyncChange = onSyncChange;
     try {
-      const remoteTasks = await fetchTasksFromSupabase();
+      const userId = this.currentUser?.id;
+      const remoteTasks = await fetchTasksFromSupabase(userId);
       if (remoteTasks !== null) {
         if (remoteTasks.length > 0) {
           this.tasks = remoteTasks;
           this.persist();
-        } else if (this.tasks.length > 0) {
-          // Upload local tasks to Supabase if Supabase is newly created/empty
-          await syncLocalTasksToSupabase(this.tasks);
+        } else if (this.tasks.length > 0 && userId) {
+          // Sync any initial local tasks up for this user
+          await syncLocalTasksToSupabase(this.tasks, userId);
         }
         if (typeof this.onSyncChange === 'function') {
           this.onSyncChange({ connected: true, taskCount: this.tasks.length });
         }
 
-        // Realtime subscription
-        subscribeToTaskChanges(async () => {
-          const updated = await fetchTasksFromSupabase();
+        // Realtime subscription for this user
+        if (this.realtimeSub?.unsubscribe) {
+          try { this.realtimeSub.unsubscribe(); } catch (_) {}
+        }
+        this.realtimeSub = subscribeToTaskChanges(userId, async () => {
+          const updated = await fetchTasksFromSupabase(userId);
           if (updated) {
             this.tasks = updated;
             this.persist();
@@ -88,13 +102,16 @@ class TaskManager {
   // Add or Update Task
   saveTask(taskData) {
     let savedTask = null;
+    const userId = this.currentUser?.id || null;
+
     if (taskData.id) {
       // Update
       const index = this.tasks.findIndex(t => t.id === taskData.id);
       if (index !== -1) {
         this.tasks[index] = {
           ...this.tasks[index],
-          ...taskData
+          ...taskData,
+          userId: userId || this.tasks[index].userId
         };
         savedTask = this.tasks[index];
       }
@@ -102,6 +119,7 @@ class TaskManager {
       // Create new
       const newTask = {
         id: 'task-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+        userId: userId,
         title: taskData.title,
         notes: taskData.notes || '',
         categoryId: taskData.categoryId || this.categories[0]?.id || 'cat-work',
@@ -119,9 +137,9 @@ class TaskManager {
     }
     this.persist();
 
-    // Async sync to Supabase
+    // Async sync to Supabase with user_id
     if (savedTask) {
-      upsertTaskToSupabase(savedTask).catch(() => {});
+      upsertTaskToSupabase(savedTask, userId).catch(() => {});
     }
     return savedTask;
   }
@@ -139,7 +157,7 @@ class TaskManager {
     }
 
     this.persist();
-    upsertTaskToSupabase(task).catch(() => {});
+    upsertTaskToSupabase(task, this.currentUser?.id).catch(() => {});
     return task;
   }
 
@@ -149,7 +167,7 @@ class TaskManager {
     if (!task) return;
     task.starred = !task.starred;
     this.persist();
-    upsertTaskToSupabase(task).catch(() => {});
+    upsertTaskToSupabase(task, this.currentUser?.id).catch(() => {});
   }
 
   // Delete Task
@@ -175,7 +193,7 @@ class TaskManager {
     if (sub) {
       sub.completed = !sub.completed;
       this.persist();
-      upsertTaskToSupabase(task).catch(() => {});
+      upsertTaskToSupabase(task, this.currentUser?.id).catch(() => {});
     }
   }
 

@@ -18,6 +18,63 @@
   <link rel="stylesheet" href="./src/styles/animations.css" />
 </head>
 <body>
+  <!-- Auth Screen (Visible when not logged in) -->
+  <div id="authScreen" class="auth-screen">
+    <div class="auth-background-glow">
+      <div class="glow-orb orb-1"></div>
+      <div class="glow-orb orb-2"></div>
+    </div>
+
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="logo">
+          <div class="logo-icon">
+            <i data-lucide="check-check"></i>
+          </div>
+          <span class="logo-text">To-do <span class="highlight">Plus</span></span>
+        </div>
+        <h2 id="authTitle" class="auth-title">로그인</h2>
+        <p id="authSubtitle" class="auth-subtitle">로그인하여 나만의 할 일 목록을 안전하게 관리하세요.</p>
+      </div>
+
+      <!-- Auth Mode Tabs -->
+      <div class="auth-tabs">
+        <button type="button" id="tabLogin" class="auth-tab active">로그인</button>
+        <button type="button" id="tabSignup" class="auth-tab">회원가입</button>
+      </div>
+
+      <!-- Auth Alert Message -->
+      <div id="authAlert" class="auth-alert hidden"></div>
+
+      <!-- Auth Form -->
+      <form id="authForm" class="auth-form" autocomplete="on">
+        <div class="form-group">
+          <label for="authEmail"><i data-lucide="mail"></i> 이메일 주소</label>
+          <input type="email" id="authEmail" class="form-control" placeholder="name@example.com" required autocomplete="email" />
+        </div>
+
+        <div class="form-group">
+          <label for="authPassword"><i data-lucide="lock"></i> 비밀번호</label>
+          <input type="password" id="authPassword" class="form-control" placeholder="6자리 이상 비밀번호 입력" required minlength="6" autocomplete="current-password" />
+        </div>
+
+        <div id="authPasswordConfirmGroup" class="form-group hidden">
+          <label for="authPasswordConfirm"><i data-lucide="shield-check"></i> 비밀번호 확인</label>
+          <input type="password" id="authPasswordConfirm" class="form-control" placeholder="비밀번호를 한 번 더 입력해 주세요" minlength="6" autocomplete="new-password" />
+        </div>
+
+        <button type="submit" id="authSubmitBtn" class="btn btn-primary auth-btn-submit shadow-glow">
+          <span id="authSubmitText">로그인</span>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <span id="authSwitchPrompt">계정이 아직 없으신가요?</span>
+        <button type="button" id="authSwitchBtn" class="auth-switch-link">회원가입하기</button>
+      </div>
+    </div>
+  </div>
+
   <div id="app" class="app-container">
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
@@ -87,6 +144,18 @@
           </div>
         </div>
 
+        <!-- Sidebar User Profile & Logout -->
+        <div id="sidebarUserWidget" class="sidebar-user-widget hidden">
+          <div class="sidebar-user-info">
+            <i data-lucide="user-check"></i>
+            <span id="sidebarUserEmail" class="sidebar-user-email">user@email.com</span>
+          </div>
+          <button id="btnSidebarLogout" class="btn btn-outline btn-xs btn-logout" style="width: 100%; margin-top: 0.5rem;">
+            <i data-lucide="log-out"></i>
+            <span>로그아웃</span>
+          </button>
+        </div>
+
         <div class="theme-toggle-wrapper">
           <span class="theme-label"><i data-lucide="sun-moon"></i> 화면 테마</span>
           <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="테마 전환">
@@ -125,6 +194,18 @@
           <div id="cloudSyncStatus" class="cloud-sync-badge local" title="Supabase 실시간 클라우드 DB 연동">
             <span class="sync-dot"></span>
             <span id="cloudSyncText">로컬 모드</span>
+          </div>
+
+          <!-- User Profile & Logout -->
+          <div id="userProfileWidget" class="user-profile-widget hidden">
+            <div class="user-pill" title="현재 로그인된 계정">
+              <i data-lucide="user-check"></i>
+              <span id="userEmailBadge" class="user-email-text">user@email.com</span>
+            </div>
+            <button id="btnLogout" class="btn btn-outline btn-sm btn-logout" title="로그아웃">
+              <i data-lucide="log-out"></i>
+              <span>로그아웃</span>
+            </button>
           </div>
 
           <!-- Add Task Primary Button -->

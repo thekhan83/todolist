@@ -1,4 +1,4 @@
-// Supabase Client & Database Sync Module
+// Supabase Client, Auth & Database Sync Module
 import { createClient } from '@supabase/supabase-js';
 
 // Retrieve credentials safely from Vite environment variables (VITE_ prefix required)
@@ -21,26 +21,24 @@ export const supabase = isSupabaseConfigured()
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
-// Target table name: defaults to 'tasks' where active data resides
-export let CURRENT_TABLE = 'tasks';
+// Target table name: defaults to 'todos' with user_id and RLS policies
+export let CURRENT_TABLE = 'todos';
 
 /**
- * Check if active table exists (prioritizes active 'tasks', supports 'todos')
+ * Check if active table exists (prioritizes 'todos', falls back to 'tasks' if needed)
  */
 export async function resolveActiveTable() {
   if (!supabase) return CURRENT_TABLE;
   try {
-    // Check if 'tasks' table exists
-    const { error: tasksErr } = await supabase.from('tasks').select('id').limit(1);
-    if (!tasksErr) {
-      CURRENT_TABLE = 'tasks';
-      return 'tasks';
-    }
-    // Fallback: check if 'todos' table exists
     const { error: todosErr } = await supabase.from('todos').select('id').limit(1);
     if (!todosErr) {
       CURRENT_TABLE = 'todos';
       return 'todos';
+    }
+    const { error: tasksErr } = await supabase.from('tasks').select('id').limit(1);
+    if (!tasksErr) {
+      CURRENT_TABLE = 'tasks';
+      return 'tasks';
     }
   } catch (err) {
     console.warn('[Supabase] resolveActiveTable error:', err.message);
@@ -48,9 +46,82 @@ export async function resolveActiveTable() {
   return CURRENT_TABLE;
 }
 
+// ==========================================
+// Authentication APIs
+// ==========================================
+
+/**
+ * Sign up with Email and Password
+ */
+export async function signUpUser(email, password) {
+  if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.');
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password
+  });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Sign in with Email and Password
+ */
+export async function signInUser(email, password) {
+  if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.');
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Sign out current user
+ */
+export async function signOutUser() {
+  if (!supabase) return;
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+}
+
+/**
+ * Get current active session
+ */
+export async function getCurrentSession() {
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data?.session || null;
+}
+
+/**
+ * Get current authenticated user
+ */
+export async function getCurrentUser() {
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getUser();
+  return data?.user || null;
+}
+
+/**
+ * Subscribe to auth state changes (login, logout, token refresh)
+ */
+export function onAuthStateChange(callback) {
+  if (!supabase) return { data: { subscription: { unsubscribe: () => {} } } };
+  return supabase.auth.onAuthStateChange((event, session) => {
+    if (typeof callback === 'function') {
+      callback(event, session);
+    }
+  });
+}
+
+// ==========================================
+// Data Mapping & Database Sync APIs
+// ==========================================
+
 // Helper to convert app Task model to Supabase DB Row
-export function toDbRow(task) {
-  return {
+export function toDbRow(task, userId) {
+  const row = {
     id: task.id,
     title: task.title,
     notes: task.notes || '',
@@ -64,12 +135,18 @@ export function toDbRow(task) {
     starred: Boolean(task.starred),
     created_at: task.createdAt || task.created_at || new Date().toISOString()
   };
+  const effectiveUserId = userId || task.user_id || task.userId;
+  if (effectiveUserId) {
+    row.user_id = effectiveUserId;
+  }
+  return row;
 }
 
 // Helper to convert Supabase DB Row to app Task model
 export function fromDbRow(row) {
   return {
     id: row.id,
+    userId: row.user_id || null,
     title: row.title,
     notes: row.notes || '',
     categoryId: row.category_id || row.categoryId || 'cat-work',
@@ -85,17 +162,23 @@ export function fromDbRow(row) {
 }
 
 /**
- * Fetch all tasks from Supabase (from 'todos' table)
+ * Fetch tasks for current logged-in user from Supabase
  */
-export async function fetchTasksFromSupabase() {
+export async function fetchTasksFromSupabase(userId) {
   if (!supabase) return null;
   try {
     await resolveActiveTable();
-    const { data, error } = await supabase
+    let query = supabase
       .from(CURRENT_TABLE)
       .select('*')
       .order('created_at', { ascending: false });
 
+    // Explicitly filter by user_id if supplied (RLS also automatically enforces this)
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data, error } = await query;
     if (error) {
       console.warn(`[Supabase] Fetch notice from ${CURRENT_TABLE}:`, error.message);
       return null;
@@ -110,10 +193,10 @@ export async function fetchTasksFromSupabase() {
 /**
  * Upsert (insert or update) a task in Supabase
  */
-export async function upsertTaskToSupabase(task) {
+export async function upsertTaskToSupabase(task, userId) {
   if (!supabase) return false;
   try {
-    const row = toDbRow(task);
+    const row = toDbRow(task, userId);
     const { error } = await supabase.from(CURRENT_TABLE).upsert(row);
     if (error) {
       console.warn(`[Supabase] Upsert into ${CURRENT_TABLE} error:`, error.message);
@@ -145,12 +228,12 @@ export async function deleteTaskFromSupabase(id) {
 }
 
 /**
- * Batch upload local tasks to Supabase
+ * Batch upload local tasks to Supabase for a specific user
  */
-export async function syncLocalTasksToSupabase(localTasks) {
+export async function syncLocalTasksToSupabase(localTasks, userId) {
   if (!supabase || !Array.isArray(localTasks) || localTasks.length === 0) return;
   try {
-    const rows = localTasks.map(toDbRow);
+    const rows = localTasks.map(t => toDbRow(t, userId));
     const { error } = await supabase.from(CURRENT_TABLE).upsert(rows);
     if (error) {
       console.warn(`[Supabase] Bulk sync to ${CURRENT_TABLE} error:`, error.message);
@@ -163,11 +246,11 @@ export async function syncLocalTasksToSupabase(localTasks) {
 /**
  * Realtime subscription for multi-device sync
  */
-export function subscribeToTaskChanges(onRemoteChange) {
+export function subscribeToTaskChanges(userId, onRemoteChange) {
   if (!supabase) return null;
   try {
     const channel = supabase
-      .channel('todos-realtime')
+      .channel(`todos-realtime-${userId || 'all'}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: CURRENT_TABLE },
