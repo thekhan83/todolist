@@ -1,5 +1,8 @@
 // Automated Unit & Integration Test Suite for TaskManager
 import assert from 'node:assert';
+if (typeof process !== 'undefined' && process.loadEnvFile) {
+  try { process.loadEnvFile(); } catch (_) {}
+}
 
 // Mock localStorage
 const mockStorage = new Map();

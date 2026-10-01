@@ -1,10 +1,53 @@
 // Supabase Client & Database Sync Module
 import { createClient } from '@supabase/supabase-js';
 
-export const SUPABASE_URL = 'https://lprgogivagoubpkwcltg.supabase.co';
-export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwcmdvZ2l2YWdvdWJwa3djbHRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4NTAyNDQsImV4cCI6MjEwNjQyNjI0NH0.IllUVvx5NCjv9R3Y94nKp78VsdNmRdDDkuOJo9Hrmug';
+// Retrieve credentials safely from Vite environment variables (VITE_ prefix required)
+const getEnvVar = (key) => {
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+    return import.meta.env[key];
+  }
+  if (typeof process !== 'undefined' && process.env && process.env[key]) {
+    return process.env[key];
+  }
+  return '';
+};
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const SUPABASE_URL = getEnvVar('VITE_SUPABASE_URL');
+export const SUPABASE_ANON_KEY = getEnvVar('VITE_SUPABASE_ANON_KEY');
+
+export const isSupabaseConfigured = () => Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+export const supabase = isSupabaseConfigured()
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+// Target table name: 'todos' is the primary table requested
+export let CURRENT_TABLE = 'todos';
+
+/**
+ * Check if 'todos' table exists; fallback to 'tasks' if available
+ */
+export async function resolveActiveTable() {
+  if (!supabase) return 'todos';
+  try {
+    // Check if 'todos' table exists
+    const { error: todosErr } = await supabase.from('todos').select('id').limit(1);
+    if (!todosErr) {
+      CURRENT_TABLE = 'todos';
+      return 'todos';
+    }
+    // Fallback: check if 'tasks' table exists
+    const { error: tasksErr } = await supabase.from('tasks').select('id').limit(1);
+    if (!tasksErr) {
+      CURRENT_TABLE = 'tasks';
+      return 'tasks';
+    }
+  } catch (err) {
+    console.warn('[Supabase] resolveActiveTable error:', err.message);
+  }
+  CURRENT_TABLE = 'todos';
+  return 'todos';
+}
 
 // Helper to convert app Task model to Supabase DB Row
 export function toDbRow(task) {
@@ -43,17 +86,19 @@ export function fromDbRow(row) {
 }
 
 /**
- * Fetch all tasks from Supabase
+ * Fetch all tasks from Supabase (from 'todos' table)
  */
 export async function fetchTasksFromSupabase() {
+  if (!supabase) return null;
   try {
+    await resolveActiveTable();
     const { data, error } = await supabase
-      .from('tasks')
+      .from(CURRENT_TABLE)
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.warn('[Supabase] Fetch tasks notice:', error.message);
+      console.warn(`[Supabase] Fetch notice from ${CURRENT_TABLE}:`, error.message);
       return null;
     }
     return (data || []).map(fromDbRow);
@@ -67,11 +112,12 @@ export async function fetchTasksFromSupabase() {
  * Upsert (insert or update) a task in Supabase
  */
 export async function upsertTaskToSupabase(task) {
+  if (!supabase) return false;
   try {
     const row = toDbRow(task);
-    const { error } = await supabase.from('tasks').upsert(row);
+    const { error } = await supabase.from(CURRENT_TABLE).upsert(row);
     if (error) {
-      console.warn('[Supabase] Upsert error:', error.message);
+      console.warn(`[Supabase] Upsert into ${CURRENT_TABLE} error:`, error.message);
       return false;
     }
     return true;
@@ -85,10 +131,11 @@ export async function upsertTaskToSupabase(task) {
  * Delete a task in Supabase
  */
 export async function deleteTaskFromSupabase(id) {
+  if (!supabase) return false;
   try {
-    const { error } = await supabase.from('tasks').delete().eq('id', id);
+    const { error } = await supabase.from(CURRENT_TABLE).delete().eq('id', id);
     if (error) {
-      console.warn('[Supabase] Delete error:', error.message);
+      console.warn(`[Supabase] Delete from ${CURRENT_TABLE} error:`, error.message);
       return false;
     }
     return true;
@@ -99,15 +146,15 @@ export async function deleteTaskFromSupabase(id) {
 }
 
 /**
- * Batch upload local tasks to Supabase if Supabase is empty
+ * Batch upload local tasks to Supabase
  */
 export async function syncLocalTasksToSupabase(localTasks) {
-  if (!Array.isArray(localTasks) || localTasks.length === 0) return;
+  if (!supabase || !Array.isArray(localTasks) || localTasks.length === 0) return;
   try {
     const rows = localTasks.map(toDbRow);
-    const { error } = await supabase.from('tasks').upsert(rows);
+    const { error } = await supabase.from(CURRENT_TABLE).upsert(rows);
     if (error) {
-      console.warn('[Supabase] Bulk sync error:', error.message);
+      console.warn(`[Supabase] Bulk sync to ${CURRENT_TABLE} error:`, error.message);
     }
   } catch (err) {
     console.warn('[Supabase] Bulk sync exception:', err.message);
@@ -118,12 +165,13 @@ export async function syncLocalTasksToSupabase(localTasks) {
  * Realtime subscription for multi-device sync
  */
 export function subscribeToTaskChanges(onRemoteChange) {
+  if (!supabase) return null;
   try {
     const channel = supabase
-      .channel('tasks-realtime')
+      .channel('todos-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'tasks' },
+        { event: '*', schema: 'public', table: CURRENT_TABLE },
         (payload) => {
           if (typeof onRemoteChange === 'function') {
             onRemoteChange(payload);
