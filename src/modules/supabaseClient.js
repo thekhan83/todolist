@@ -21,32 +21,31 @@ export const supabase = isSupabaseConfigured()
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
-// Target table name: 'todos' is the primary table requested
-export let CURRENT_TABLE = 'todos';
+// Target table name: defaults to 'tasks' where active data resides
+export let CURRENT_TABLE = 'tasks';
 
 /**
- * Check if 'todos' table exists; fallback to 'tasks' if available
+ * Check if active table exists (prioritizes active 'tasks', supports 'todos')
  */
 export async function resolveActiveTable() {
-  if (!supabase) return 'todos';
+  if (!supabase) return CURRENT_TABLE;
   try {
-    // Check if 'todos' table exists
-    const { error: todosErr } = await supabase.from('todos').select('id').limit(1);
-    if (!todosErr) {
-      CURRENT_TABLE = 'todos';
-      return 'todos';
-    }
-    // Fallback: check if 'tasks' table exists
+    // Check if 'tasks' table exists
     const { error: tasksErr } = await supabase.from('tasks').select('id').limit(1);
     if (!tasksErr) {
       CURRENT_TABLE = 'tasks';
       return 'tasks';
     }
+    // Fallback: check if 'todos' table exists
+    const { error: todosErr } = await supabase.from('todos').select('id').limit(1);
+    if (!todosErr) {
+      CURRENT_TABLE = 'todos';
+      return 'todos';
+    }
   } catch (err) {
     console.warn('[Supabase] resolveActiveTable error:', err.message);
   }
-  CURRENT_TABLE = 'todos';
-  return 'todos';
+  return CURRENT_TABLE;
 }
 
 // Helper to convert app Task model to Supabase DB Row
